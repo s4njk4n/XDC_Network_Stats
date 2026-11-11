@@ -35,7 +35,8 @@
   };
   var EPOCH = 900;             // blocks per XDPoS epoch
   var LAG_BLOCKS = 30;         // a node this far behind the best block counts as "behind"
-  var FEED_LEN = 8;            // blocks kept in the live feed
+  var FEED_LEN = 8;            // blocks shown in the live feed
+  var HIST = 40;               // blocks kept from the chain (transactions chart)
   var ROW_LIMIT = 120;         // rows drawn before "Show all"
   var COINGECKO_ID = 'xdce-crowd-sale';
   var VALIDATOR = '0x0000000000000000000000000000000000000088';
@@ -377,32 +378,38 @@
     });
   }
 
+  function addBlocks(blocks, live) {
+    var fresh = {};
+    blocks.forEach(function (bk) {
+      if (!bk || !bk.number) return;
+      var n = num(bk.number);
+      fresh[n] = live;
+      S.blocks.push({
+        n: n, ts: num(bk.timestamp), tx: (bk.transactions || []).length,
+        gas: num(bk.gasUsed), lim: num(bk.gasLimit), hash: bk.hash, miner: bk.miner, size: num(bk.size)
+      });
+    });
+    var seen = {};
+    S.blocks = S.blocks.filter(function (x) { if (seen[x.n]) return false; seen[x.n] = 1; return true; })
+      .sort(function (a, b) { return b.n - a.n; }).slice(0, HIST);
+    return fresh;
+  }
+
   function pollHead() {
     var g = gen;
     return rpc('eth_blockNumber').then(function (h) {
       if (g !== gen) return;
       h = num(h);
       if (!h || h <= S.rpcHead) { renderStatus(); return; }
-      var from = Math.max(h - FEED_LEN + 1, S.rpcHead + 1);
+      var first = !S.rpcHead;
+      // First load: the newest few straight away, the rest of the chart history right after
+      var from = first ? h - FEED_LEN + 1 : Math.max(h - HIST + 1, S.rpcHead + 1);
       var calls = [];
       for (var b = h; b >= from; b--) calls.push(['eth_getBlockByNumber', ['0x' + b.toString(16), false]]);
-      var first = !S.rpcHead;
       S.rpcHead = h; S.headSeenAt = Date.now();
       return rpcBatch(calls).then(function (blocks) {
         if (g !== gen) return;
-        var fresh = {};
-        blocks.forEach(function (bk) {
-          if (!bk || !bk.number) return;
-          var n = num(bk.number);
-          fresh[n] = !first;
-          S.blocks.push({
-            n: n, ts: num(bk.timestamp), tx: (bk.transactions || []).length,
-            gas: num(bk.gasUsed), lim: num(bk.gasLimit), hash: bk.hash, miner: bk.miner, size: num(bk.size)
-          });
-        });
-        var seen = {};
-        S.blocks = S.blocks.filter(function (x) { if (seen[x.n]) return false; seen[x.n] = 1; return true; })
-          .sort(function (a, b) { return b.n - a.n; }).slice(0, FEED_LEN);
+        var fresh = addBlocks(blocks, !first);
         if (S.blocks[0]) {
           S.headTs = S.blocks[0].ts;
           // First load: trust the block timestamp for "age"; after that, the moment we saw it
@@ -410,6 +417,16 @@
         }
         renderFeed(fresh);
         renderHead();
+        renderTxChart();
+        if (first) {
+          var older = [];
+          for (var o = h - FEED_LEN; o > h - HIST; o--) older.push(['eth_getBlockByNumber', ['0x' + o.toString(16), false]]);
+          return rpcBatch(older).then(function (more) {
+            if (g !== gen) return;
+            addBlocks(more, false);
+            renderHead(); renderTxChart();
+          });
+        }
       });
     });
   }
@@ -773,6 +790,26 @@
     cv.addEventListener('pointerleave', leave);
   });
 
+  // Transactions per block: read from the chain itself (RPC). The stats server's series is only a
+  // fallback, because on mainnet it can arrive empty.
+  function renderTxChart() {
+    var b = S.blocks.slice().reverse(), tx, labelOf;
+    if (b.length >= 2) {
+      tx = b.map(function (x) { return x.tx; });
+      labelOf = function (i, v) { return 'Block #' + fmt(b[i].n) + ': ' + fmt(v) + ' tx'; };
+    } else {
+      var c = S.charts;
+      tx = (c && c.transactions || []).map(num);
+      labelOf = function (i, v) { var k = tx.length - 1 - i; return (k === 0 ? 'Latest block' : k + ' block' + (k > 1 ? 's' : '') + ' ago') + ': ' + fmt(v) + ' tx'; };
+    }
+    if (!tx.length) return;
+    barChart('ch-tx', tx, {
+      color: 'rgba(94,107,168,1)', lastGlow: true, min: 1, guide: mean(tx),
+      label: labelOf, hover: charts['ch-tx'] && charts['ch-tx'].opts.hover
+    });
+    setText('r-tx', 'avg ' + nf1.format(mean(tx)) + ' · max ' + fmt(Math.max.apply(null, tx)));
+  }
+
   function renderCharts() {
     var c = S.charts; if (!c) return;
     var bt = (c.blocktime || []).map(num), tx = (c.transactions || []).map(num), gas = (c.gasSpending || []).map(num);
@@ -785,11 +822,7 @@
       label: function (i, v) { return agoLabel(i, n) + ': ' + nf2.format(v) + ' s'; }, hover: charts['ch-bt'] && charts['ch-bt'].opts.hover
     });
     setText('r-bt', 'avg ' + nf2.format(avgBt) + ' s');
-    barChart('ch-tx', tx, {
-      color: 'rgba(94,107,168,1)', lastGlow: true, min: 1, guide: mean(tx),
-      label: function (i, v) { return agoLabel(i, tx.length) + ': ' + fmt(v) + ' tx'; }, hover: charts['ch-tx'] && charts['ch-tx'].opts.hover
-    });
-    setText('r-tx', 'avg ' + nf1.format(mean(tx)) + ' · max ' + fmt(Math.max.apply(null, tx.concat([0]))));
+    renderTxChart();
     barChart('ch-gas', gas, {
       color: 'rgba(140,106,36,1)', lastGlow: true, min: 1, guide: mean(gas),
       label: function (i, v) { return agoLabel(i, gas.length) + ': ' + fmt(v) + ' gas'; }, hover: charts['ch-gas'] && charts['ch-gas'].opts.hover
@@ -823,7 +856,7 @@
     var ul = $('blocks');
     if (!S.blocks.length) return;
     var now = Date.now() / 1000;
-    ul.innerHTML = S.blocks.map(function (b) {
+    ul.innerHTML = S.blocks.slice(0, FEED_LEN).map(function (b) {
       var pct = b.lim ? Math.round(b.gas / b.lim * 100) : 0;
       var age = Math.max(0, now - b.ts);
       return '<li' + (fresh && fresh[b.n] ? ' class="new"' : '') + '>' +
@@ -1154,7 +1187,7 @@
   var rz;
   addEventListener('resize', function () {
     clearTimeout(rz);
-    rz = setTimeout(function () { mapLayer = null; renderPrice(); renderCharts(); renderMap(); }, 150);
+    rz = setTimeout(function () { mapLayer = null; renderPrice(); renderCharts(); renderTxChart(); renderMap(); }, 150);
   });
 
   $('year').textContent = new Date().getFullYear();
