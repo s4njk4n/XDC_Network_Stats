@@ -37,7 +37,10 @@
   var LAG_BLOCKS = 30;         // a node this far behind the best block counts as "behind"
   var FEED_LEN = 8;            // blocks shown in the live feed
   var HIST = 40;               // blocks kept from the chain (transactions chart)
-  var ROW_LIMIT = 120;         // rows drawn before "Show all"
+  // Phones get fewer rows and no per-row mini charts: rebuilding thousands of elements is what makes scrolling stutter
+  var NARROW = window.matchMedia ? matchMedia('(max-width: 760px)').matches : false;
+  var TOUCH = window.matchMedia ? matchMedia('(pointer: coarse)').matches : false;
+  var ROW_LIMIT = NARROW ? 40 : 120;   // rows drawn before "Show all"
   var COINGECKO_ID = 'xdce-crowd-sale';
   var VALIDATOR = '0x0000000000000000000000000000000000000088';
 
@@ -936,7 +939,8 @@
   var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function mapLoop(t) {
     drawMap(t);
-    mapAnim = (!reduceMotion && mapVisible && !document.hidden) ? requestAnimationFrame(mapLoop) : 0;
+    // Touch devices: draw once per update, no continuous pulse (saves the phone's main thread for scrolling)
+    mapAnim = (!reduceMotion && !TOUCH && mapVisible && !document.hidden) ? requestAnimationFrame(mapLoop) : 0;
   }
   function renderMap() {
     if (!mapLayer) buildMapLayer();
@@ -1063,7 +1067,7 @@
         '<td>' + esc(r.ver) + '</td>' +
         '<td class="r' + (off ? ' t-dim' : '') + '">' + (r.block ? fmt(r.block) : '–') + (r.status === 'lag' ? ' <span class="t-lag">−' + fmt(r.behind) + '</span>' : '') + '</td>' +
         '<td class="r ' + (off ? 't-dim' : cls(r.prop, 500, 1500)) + '">' + (off ? '–' : (r.prop / 1000).toFixed(2) + ' s') + '</td>' +
-        '<td>' + (off ? '' : histBars(r.hist)) + '</td>' +
+        (NARROW ? '' : '<td>' + (off ? '' : histBars(r.hist)) + '</td>') +
         '<td class="r ' + (off || !r.lat ? 't-dim' : cls(r.lat, 150, 600)) + '">' + (off || !r.lat ? '–' : fmt(r.lat) + ' ms') + '</td>' +
         '<td class="r ' + (off ? 't-dim' : r.peers === 0 ? 't-bad' : r.peers < 3 ? 't-lag' : '') + '">' + (off ? '–' : fmt(r.peers)) + '</td>' +
         '<td class="r' + (off ? ' t-dim' : '') + '">' + (off ? '–' : fmt(r.pend)) + '</td>' +
@@ -1071,7 +1075,7 @@
         '<td class="t-dim">' + esc(r.loc || '–') + '</td>' +
         '</tr>';
     }
-    if (!shown.length) html = '<tr><td colspan="11" class="empty" style="padding:1.5rem;text-align:center">' + (rows.length ? 'No nodes match.' : 'Loading nodes…') + '</td></tr>';
+    if (!shown.length) html = '<tr><td colspan="' + (NARROW ? 10 : 11) + '" class="empty" style="padding:1.5rem;text-align:center">' + (rows.length ? 'No nodes match.' : 'Loading nodes…') + '</td></tr>';
     $('tbody').innerHTML = html;
   }
 
@@ -1120,8 +1124,37 @@
     renderQueued = true;
     requestAnimationFrame(function () {
       renderQueued = false;
-      renderHead(); renderTiles(); renderCharts(); renderMap(); renderDists(); renderTable(); renderStatus();
+      renderHead(); renderTiles(); renderCharts(); renderStatus();
+      heavy();
     });
+  }
+
+  // The map, the version/country lists and the node table are the expensive parts to redraw.
+  // From the live stream they redraw at most every 5 s, only when on screen, and never mid-scroll.
+  // Anything the visitor does (search, filter, sort, pin) still redraws the table immediately.
+  var HEAVY_GAP = 5000, heavyAt = 0, heavyT = 0, lastScroll = 0, onScreen = { table: true, geo: true };
+  addEventListener('scroll', function () { lastScroll = Date.now(); }, { passive: true });
+  $('tbody').closest('.tablewrap').addEventListener('scroll', function () { lastScroll = Date.now(); }, { passive: true });
+  function heavy(force) {
+    clearTimeout(heavyT);
+    var now = Date.now(), wait = Math.max(heavyAt + HEAVY_GAP - now, lastScroll + 400 - now, 0);
+    if (!force && heavyAt && wait > 0) { heavyT = setTimeout(heavy, wait); return; }
+    heavyAt = now;
+    if (onScreen.geo || !mapPts.length) { renderMap(); renderDists(); } else onScreen.geoStale = true;
+    if (onScreen.table || !$('tbody').children.length) renderTable(); else onScreen.tableStale = true;
+  }
+  if (window.IntersectionObserver) {
+    var watch = function (el, key) {
+      new IntersectionObserver(function (es) {
+        onScreen[key] = es[0].isIntersecting;
+        if (onScreen[key] && onScreen[key + 'Stale']) {
+          onScreen[key + 'Stale'] = false;
+          if (key === 'table') renderTable(); else { renderMap(); renderDists(); }
+        }
+      }, { rootMargin: '300px 0px' }).observe(el);
+    };
+    watch($('tbody').closest('.tablewrap'), 'table');
+    watch($('map'), 'geo');
   }
 
   function start(name) {

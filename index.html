@@ -286,6 +286,12 @@
     .t-dim { color: var(--faint); }
     .hist { display: inline-flex; gap: 1px; align-items: flex-end; height: 1rem; vertical-align: middle; }
     .hist i { width: 3px; border-radius: 1px; background: var(--c, var(--ok)); opacity: 0.85; }
+    /* Phones: no scroll box inside the page (it fights iOS momentum scrolling), and no mini bar charts per row */
+    @media (max-width: 760px) {
+      .tablewrap { max-height: none; overflow-y: visible; }
+      thead th { position: static; }
+      .col-hist { display: none; }
+    }
     .tfoot { display: flex; justify-content: center; padding: 0.9rem 0 0; }
     .btn-ghost {
       display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;
@@ -542,7 +548,7 @@
                 <th scope="col" data-k="ver"><button type="button">Version</button></th>
                 <th scope="col" class="r" data-k="block"><button type="button">Block</button></th>
                 <th scope="col" class="r" data-k="prop"><button type="button">Propagation</button></th>
-                <th scope="col" data-k="hist"><button type="button" tabindex="-1" disabled style="cursor:default">Recent blocks</button></th>
+                <th scope="col" data-k="hist" class="col-hist"><button type="button" tabindex="-1" disabled style="cursor:default">Recent blocks</button></th>
                 <th scope="col" class="r" data-k="lat"><button type="button">Latency</button></th>
                 <th scope="col" class="r" data-k="peers"><button type="button">Peers</button></th>
                 <th scope="col" class="r" data-k="pend"><button type="button">Pending</button></th>
