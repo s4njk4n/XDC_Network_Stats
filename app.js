@@ -395,38 +395,29 @@
     return fresh;
   }
 
+  // One request per tick: the latest block itself (not eth_blockNumber + a second fetch).
+  // Gaps (a missed block, or the first load) are filled with one batched request.
   function pollHead() {
     var g = gen;
-    return rpc('eth_blockNumber').then(function (h) {
+    return rpc('eth_getBlockByNumber', ['latest', false]).then(function (top) {
       if (g !== gen) return;
-      h = num(h);
+      var h = top && top.number ? num(top.number) : 0;
       if (!h || h <= S.rpcHead) { renderStatus(); return; }
-      var first = !S.rpcHead;
-      // First load: the newest few straight away, the rest of the chart history right after
-      var from = first ? h - FEED_LEN + 1 : Math.max(h - HIST + 1, S.rpcHead + 1);
-      var calls = [];
-      for (var b = h; b >= from; b--) calls.push(['eth_getBlockByNumber', ['0x' + b.toString(16), false]]);
+      var first = !S.rpcHead, prevHead = S.rpcHead;
       S.rpcHead = h; S.headSeenAt = Date.now();
-      return rpcBatch(calls).then(function (blocks) {
+      var fresh = addBlocks([top], !first);
+      if (first) S.headSeenAt = Math.min(Date.now(), num(top.timestamp) * 1000);
+      S.headTs = S.blocks[0].ts;
+      renderFeed(fresh); renderHead(); renderTxChart();
+      // Fill anything between the previous head and this one (first load: the last HIST blocks)
+      var from = first ? h - HIST + 1 : Math.max(h - HIST + 1, prevHead + 1);
+      var calls = [];
+      for (var b = h - 1; b >= from; b--) calls.push(['eth_getBlockByNumber', ['0x' + b.toString(16), false]]);
+      if (!calls.length) return;
+      return rpcBatch(calls).then(function (more) {
         if (g !== gen) return;
-        var fresh = addBlocks(blocks, !first);
-        if (S.blocks[0]) {
-          S.headTs = S.blocks[0].ts;
-          // First load: trust the block timestamp for "age"; after that, the moment we saw it
-          if (first) S.headSeenAt = Math.min(Date.now(), S.blocks[0].ts * 1000);
-        }
-        renderFeed(fresh);
-        renderHead();
-        renderTxChart();
-        if (first) {
-          var older = [];
-          for (var o = h - FEED_LEN; o > h - HIST; o--) older.push(['eth_getBlockByNumber', ['0x' + o.toString(16), false]]);
-          return rpcBatch(older).then(function (more) {
-            if (g !== gen) return;
-            addBlocks(more, false);
-            renderHead(); renderTxChart();
-          });
-        }
+        var f2 = addBlocks(more, !first);
+        renderFeed(first ? null : f2); renderHead(); renderTxChart();
       });
     });
   }
