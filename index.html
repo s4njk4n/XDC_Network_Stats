@@ -278,8 +278,10 @@
     .pinbtn:hover { color: var(--ink); }
     .pinned .pinbtn { color: var(--flare); }
     .pinned .pinbtn svg { fill: currentColor; }
-    .nname { display: flex; align-items: center; gap: 0.55rem; max-width: 19rem; }
-    .nname b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+    .nname { display: flex; align-items: center; gap: 0.55rem; max-width: 19rem; min-width: 15.5rem; }   /* min stops the table squeezing wrapped names to a sliver */
+    /* Long names wrap instead of being cut off: line breaks fall after an underscore or a run of them (app.js adds <wbr>),
+       or at hyphens, so addresses inside a name stay in one piece; anywhere only as a last resort */
+    .nname b { font-weight: 600; min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
     .sdot { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex: none; background: var(--c); }
     .c-ok { --c: var(--ok); box-shadow: 0 0 0 3px rgb(31 138 98 / 0.15); }
     .c-lag { --c: var(--amber); box-shadow: 0 0 0 3px rgb(143 100 16 / 0.15); }

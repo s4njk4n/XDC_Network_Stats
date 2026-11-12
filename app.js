@@ -1063,7 +1063,7 @@
       var label = r.status === 'ok' ? 'In sync' : r.status === 'lag' ? fmt(r.behind) + ' blocks behind' : 'Offline';
       html += '<tr' + (pinned ? ' class="pinned"' : '') + ' data-id="' + esc(r.id) + '">' +
         '<td class="pin"><button type="button" class="pinbtn" aria-pressed="' + pinned + '" aria-label="' + (pinned ? 'Unpin ' : 'Pin ') + esc(r.name) + '"><svg aria-hidden="true"><use href="#i-star"/></svg></button></td>' +
-        '<td><div class="nname"><span class="sdot ' + sc + '" title="' + label + '"></span><b title="' + esc(r.name) + (r.coinbase ? '\n' + esc(xdcAddr(r.coinbase)) : '') + '">' + esc(r.name) + '</b></div></td>' +
+        '<td><div class="nname"><span class="sdot ' + sc + '" title="' + label + '"></span><b title="' + esc(r.name) + (r.coinbase ? '\n' + esc(xdcAddr(r.coinbase)) : '') + '">' + esc(r.name).replace(/_(?!_)/g, '_<wbr>') + '</b></div></td>' +
         '<td>' + esc(r.ver) + '</td>' +
         '<td class="r' + (off ? ' t-dim' : '') + '">' + (r.block ? fmt(r.block) : '–') + (r.status === 'lag' ? ' <span class="t-lag">−' + fmt(r.behind) + '</span>' : '') + '</td>' +
         '<td class="r ' + (off ? 't-dim' : cls(r.prop, 500, 1500)) + '">' + (off ? '–' : (r.prop / 1000).toFixed(2) + ' s') + '</td>' +
