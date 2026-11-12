@@ -88,10 +88,14 @@
     .brand .sub { color: var(--mist); font-weight: 500; }
     .site-nav { display: flex; align-items: center; }
     .site-nav a { color: var(--mist); text-decoration: none; font-weight: 500; white-space: nowrap; }
-    @media (max-width: 640px) { .brand .sub, .site-nav .wide { display: none; } }
+    @media (max-width: 640px) { .brand .sub { display: none; } }
     @media (max-width: 480px) { .brand .txt { display: none; } }
 
     /* ---------- Hero ---------- */
+    .jump { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 1.1rem; margin: 1.35rem 0 0; font-size: 0.92rem; }
+    .jump .label { margin-right: 0.1rem; }
+    .jump a { color: var(--signal); font-weight: 500; text-decoration: none; border-bottom: 1px solid rgb(29 92 150 / 0.3); }
+    .jump a:hover { color: var(--ink); border-bottom-color: var(--ink); }
     .hero { padding: clamp(2.5rem, 6vw, 4.25rem) 0 clamp(2.25rem, 4.5vw, 3.25rem); }
     .hero-grid { display: grid; gap: 2.25rem 4rem; align-items: center; }
     @media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr); } }
@@ -370,11 +374,12 @@
         <svg aria-hidden="true"><use href="#i-beacon"/></svg>
         <span class="txt">XDC Outpost</span> <span class="sub">/ Network Stats</span>
       </a>
-      <nav class="site-nav" aria-label="Network Stats sections">
-        <a class="wide" href="#activity">Activity</a>
-        <a href="#map">Map</a>
-        <a href="#nodes">Nodes</a>
-        <a href="https://xdcoutpost.xyz/">Outpost home</a>
+      <nav class="site-nav" aria-label="XDC Outpost">
+        <a href="/XDC_Network_Stats/" aria-current="page"><span class="full">Network stats</span><span class="short">Stats</span></a>
+        <a href="/XDC_Atlas/#rpc-status"><span class="full">RPC status</span><span class="short">RPCs</span></a>
+        <a href="/#tools">Tools</a>
+        <a class="wide" href="/XDC_Atlas/">Atlas</a>
+        <a class="wide" href="/#about">About</a>
       </nav>
     </div>
   </header>
@@ -393,6 +398,12 @@
             </div>
             <p class="status" id="status" data-state="idle" role="status"><span class="dot" aria-hidden="true"></span><span id="status-text">Connecting…</span></p>
           </div>
+          <nav class="jump" aria-label="On this page">
+            <span class="label">On this page</span>
+            <a href="#activity">Activity</a>
+            <a href="#map">Map</a>
+            <a href="#nodes">Nodes</a>
+          </nav>
         </div>
 
         <aside class="console panel" aria-label="Chain head">
