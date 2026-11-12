@@ -306,7 +306,6 @@
     /* ---------- About ---------- */
     .about { padding: clamp(3rem, 6vw, 4.5rem) 0; border-top: 1px solid var(--line); background: var(--night); }
     .about .wrap { display: grid; gap: 1rem; }
-    @media (min-width: 900px) { .about .wrap { grid-template-columns: 1fr 1fr; } }
     .about .card { padding: clamp(1.25rem, 3vw, 1.75rem); }
     .about h2 { font-weight: 600; font-size: clamp(1.35rem, 2.6vw, 1.7rem); letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 0.85rem; }
     .about p, .about li { color: var(--mist); font-size: 0.95rem; }
@@ -577,19 +576,8 @@
     <section class="about" aria-labelledby="about-title">
       <div class="wrap">
         <div class="card">
-          <p class="eyebrow">How it works</p>
-          <h2 id="about-title">Why it’s fast</h2>
-          <p>This page is one small HTML file and one script, with no framework and nothing to download before it can draw.</p>
-          <ul>
-            <li><strong>Instant first view.</strong> The last snapshot is kept in your browser, so a return visit shows numbers straight away and then refreshes them.</li>
-            <li><strong>Light drawing.</strong> Charts and the map are drawn on canvas, the map is built into the page, and the table only draws the rows you can see.</li>
-            <li><strong>Polite polling.</strong> Updates pause when the tab is hidden and back off if a source is struggling.</li>
-            <li><strong>Straight to the chain.</strong> New blocks, masternodes and epochs come from public XDC RPC, with automatic failover between endpoints.</li>
-          </ul>
-        </div>
-        <div class="card">
           <p class="eyebrow">Sources</p>
-          <h2>Where the numbers come from</h2>
+          <h2 id="about-title">Where the numbers come from</h2>
           <ul>
             <li><strong>Nodes, propagation and the 40-block charts:</strong> the official XinFin stats server (<code id="src-stats">stats1.xinfin.network</code>), streamed live over the same websocket that xinfin.network and stats.xdc.network use. Only nodes that choose to report appear.</li>
             <li><strong>Latest blocks, masternodes and epochs:</strong> public XDC RPC (<code id="src-rpc">rpc.plugin.global/xdcmainnet</code>). Epochs are 900 blocks.</li>
